@@ -27,10 +27,10 @@ pub struct Inscription {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub(crate) struct TransactionInscription {
-  pub(crate) inscription: Inscription,
-  pub(crate) tx_in_index: u32,
-  pub(crate) tx_in_offset: u32,
+pub struct TransactionInscription {
+  pub inscription: Inscription,
+  pub tx_in_index: u32,
+  pub tx_in_offset: u32,
 }
 
 impl Inscription {
@@ -106,7 +106,7 @@ impl Inscription {
     self.append_reveal_script_to_builder(builder).into_script()
   }
 
-  pub(crate) fn media(&self) -> Media {
+  pub fn media(&self) -> Media {
     if self.body.is_none() {
       return Media::Unknown;
     }
@@ -118,7 +118,7 @@ impl Inscription {
     content_type.parse().unwrap_or(Media::Unknown)
   }
 
-  pub(crate) fn body(&self) -> Option<&[u8]> {
+  pub fn body(&self) -> Option<&[u8]> {
     Some(self.body.as_ref()?)
   }
 
@@ -130,7 +130,7 @@ impl Inscription {
     Some(self.body()?.len())
   }
 
-  pub(crate) fn content_type(&self) -> Option<&str> {
+  pub fn content_type(&self) -> Option<&str> {
     str::from_utf8(self.content_type.as_ref()?).ok()
   }
 

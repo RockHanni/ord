@@ -5,7 +5,7 @@ use {
 };
 
 #[derive(Debug, PartialEq, Copy, Clone)]
-pub(crate) enum Media {
+pub enum Media {
   Audio,
   Iframe,
   Image,

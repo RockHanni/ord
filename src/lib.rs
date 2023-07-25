@@ -107,7 +107,8 @@ mod epoch;
 mod fee_rate;
 mod height;
 mod index;
-mod inscription;
+// hxc modified
+pub mod inscription;
 mod inscription_id;
 mod media;
 mod object;

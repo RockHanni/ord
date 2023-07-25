@@ -22,8 +22,9 @@ pub(crate) enum Curse {
   Reinscription,
 }
 
+// hxc modified
 #[derive(Debug, PartialEq, Clone)]
-pub(crate) struct Inscription {
+pub struct Inscription {
   body: Option<Vec<u8>>,
   content_type: Option<Vec<u8>>,
 }
@@ -36,8 +37,9 @@ pub(crate) struct TransactionInscription {
 }
 
 impl Inscription {
-  #[cfg(test)]
-  pub(crate) fn new(content_type: Option<Vec<u8>>, body: Option<Vec<u8>>) -> Self {
+  // hxc modified
+  // #[cfg(test)]
+  pub fn new(content_type: Option<Vec<u8>>, body: Option<Vec<u8>>) -> Self {
     Self { content_type, body }
   }
 
@@ -104,7 +106,8 @@ impl Inscription {
     builder.push_opcode(opcodes::all::OP_ENDIF)
   }
 
-  pub(crate) fn append_reveal_script(&self, builder: script::Builder) -> ScriptBuf {
+  // hxc modified
+  pub fn append_reveal_script(&self, builder: script::Builder) -> ScriptBuf {
     self.append_reveal_script_to_builder(builder).into_script()
   }
 

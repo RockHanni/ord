@@ -123,7 +123,8 @@ impl Inscription {
     content_type.parse().unwrap_or(Media::Unknown)
   }
 
-  pub(crate) fn body(&self) -> Option<&[u8]> {
+  // hxc modified
+  pub fn body(&self) -> Option<&[u8]> {
     Some(self.body.as_ref()?)
   }
 
@@ -135,7 +136,8 @@ impl Inscription {
     Some(self.body()?.len())
   }
 
-  pub(crate) fn content_type(&self) -> Option<&str> {
+  // hxc modified
+  pub fn content_type(&self) -> Option<&str> {
     str::from_utf8(self.content_type.as_ref()?).ok()
   }
 

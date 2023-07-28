@@ -39,8 +39,8 @@ pub(crate) struct TransactionInscription {
 impl Inscription {
   // hxc modified
   // #[cfg(test)]
-  pub fn new(content_type: Option<Vec<u8>>, body: Option<Vec<u8>>) -> Self {
-    Self { content_type, body }
+  pub fn new(body: Option<Vec<u8>>, content_type: Option<Vec<u8>>) -> Self {
+    Self { body, content_type }
   }
 
   pub(crate) fn from_transaction(tx: &Transaction) -> Vec<TransactionInscription> {

@@ -109,19 +109,19 @@ mod height;
 mod index;
 // hxc modified
 pub mod inscription;
-mod inscription_id;
+pub mod inscription_id;
 mod media;
 mod object;
 mod options;
 mod outgoing;
 mod page_config;
-mod rarity;
+pub mod rarity;
 mod representation;
-mod sat;
+pub mod sat;
 mod sat_point;
 pub mod subcommand;
 mod tally;
-mod templates;
+pub mod templates;
 mod wallet;
 
 type Result<T = (), E = Error> = std::result::Result<T, E>;

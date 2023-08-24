@@ -23,7 +23,7 @@ use {
   std::io::{BufWriter, Read, Write},
 };
 
-mod entry;
+pub mod entry;
 mod fetcher;
 mod reorg;
 mod rtx;

@@ -106,7 +106,7 @@ mod deserialize_from_str;
 mod epoch;
 mod fee_rate;
 mod height;
-mod index;
+pub mod index;
 // hxc modified
 pub mod inscription;
 pub mod inscription_id;

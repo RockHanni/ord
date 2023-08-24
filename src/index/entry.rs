@@ -1,6 +1,6 @@
 use super::*;
 
-pub(super) trait Entry: Sized {
+pub trait Entry: Sized {
   type Value;
 
   fn load(value: Self::Value) -> Self;

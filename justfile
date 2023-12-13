@@ -20,23 +20,23 @@ clippy:
 lclippy:
   cargo lclippy --all --all-targets -- -D warnings
 
-deploy branch chain domain:
+deploy branch remote chain domain:
   ssh root@{{domain}} "mkdir -p deploy \
     && apt-get update --yes \
     && apt-get upgrade --yes \
     && apt-get install --yes git rsync"
   rsync -avz deploy/checkout root@{{domain}}:deploy/checkout
-  ssh root@{{domain}} 'cd deploy && ./checkout {{branch}} {{chain}} {{domain}}'
+  ssh root@{{domain}} 'cd deploy && ./checkout {{branch}} {{remote}} {{chain}} {{domain}}'
 
-deploy-all: deploy-testnet deploy-signet deploy-mainnet
+deploy-mainnet-balance branch="master" remote="ordinals/ord": (deploy branch remote "main" "balance.ordinals.net")
 
-deploy-mainnet branch="master": (deploy branch "main" "ordinals.net")
+deploy-mainnet-equilibrium branch="master" remote="ordinals/ord": (deploy branch remote "main" "equilibrium.ordinals.net")
 
-deploy-signet branch="master": (deploy branch "signet" "signet.ordinals.net")
+deploy-mainnet-stability branch="master" remote="ordinals/ord": (deploy branch remote "main" "stability.ordinals.net")
 
-deploy-testnet branch="master": (deploy branch "test" "testnet.ordinals.net")
+deploy-signet branch="master" remote="ordinals/ord": (deploy branch remote "signet" "signet.ordinals.net")
 
-deploy-ord-dev branch="master" chain="main" domain="ordinals-dev.com": (deploy branch chain domain)
+deploy-testnet branch="master" remote="ordinals/ord": (deploy branch remote "test" "testnet.ordinals.net")
 
 save-ord-dev-state domain="ordinals-dev.com":
   $EDITOR ./deploy/save-ord-dev-state
@@ -68,7 +68,18 @@ profile-tests:
     | tee test-times.txt
 
 fuzz:
-  cd fuzz && cargo +nightly fuzz run transaction-builder
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  cd fuzz
+  while true; do
+    cargo +nightly fuzz run transaction-builder -- -max_total_time=60
+    cargo +nightly fuzz run runestone-decipher -- -max_total_time=60
+    cargo +nightly fuzz run varint-decode -- -max_total_time=60
+    cargo +nightly fuzz run varint-encode -- -max_total_time=60
+  done
+
+decode txid:
+  bitcoin-cli getrawtransaction {{txid}} | xxd -r -p - | cargo run decode
 
 open:
   open http://localhost
@@ -90,7 +101,6 @@ prepare-release revision='master':
   git checkout -b release-$VERSION
   git add -u
   git commit -m "Release $VERSION"
-  git tag -a $VERSION -m "Release $VERSION"
   gh pr create --web
 
 publish-release revision='master':
@@ -100,6 +110,20 @@ publish-release revision='master':
   git clone https://github.com/ordinals/ord.git tmp/release
   cd tmp/release
   git checkout {{ revision }}
+  cargo publish
+  cd ../..
+  rm -rf tmp/release
+
+publish-tag-and-crate revision='master':
+  #!/usr/bin/env bash
+  set -euxo pipefail
+  rm -rf tmp/release
+  git clone git@github.com:ordinals/ord.git tmp/release
+  cd tmp/release
+  git checkout {{revision}}
+  VERSION=`sed -En 's/version[[:space:]]*=[[:space:]]*"([^"]+)"/\1/p' Cargo.toml | head -1`
+  git tag -a $VERSION -m "Release $VERSION"
+  git push git@github.com:ordinals/ord.git $VERSION
   cargo publish
   cd ../..
   rm -rf tmp/release
@@ -137,6 +161,19 @@ benchmark-revision rev:
   rsync -avz benchmark/checkout root@ordinals.net:benchmark/checkout
   ssh root@ordinals.net 'cd benchmark && ./checkout {{rev}}'
 
+benchmark-branch branch:
+  #/usr/bin/env bash
+  # rm -f master.redb
+  rm -f {{branch}}.redb
+  # git checkout master
+  # cargo build --release
+  # time ./target/release/ord --index master.redb index update
+  # ll master.redb
+  git checkout {{branch}}
+  cargo build --release
+  time ./target/release/ord --index {{branch}}.redb index update
+  ll {{branch}}.redb
+
 build-snapshots:
   #!/usr/bin/env bash
   set -euxo pipefail
@@ -157,11 +194,18 @@ build-snapshots:
     printf "$height_limit\t$((b - a))\n" >> time.txt
   done
 
-serve-docs:
-  mdbook serve docs --open
+serve-docs: build-docs
+  open http://127.0.0.1:8080
+  python3 -m http.server --directory docs/build/html --bind 127.0.0.1 8080
 
 build-docs:
-  mdbook build docs
+  #!/usr/bin/env bash
+  mdbook build docs -d build
+  for lang in "de" "fr" "es" "pt" "ru" "zh" "ja" "ko" "fil" "ar" "hi" "it"; do
+    MDBOOK_BOOK__LANGUAGE=$lang \
+      mdbook build docs -d build/$lang
+    mv docs/build/$lang/html docs/build/html/$lang
+  done
 
 update-changelog:
   echo >> CHANGELOG.md
@@ -172,3 +216,12 @@ preview-examples:
 
 convert-logo-to-favicon:
   convert -background none -resize 256x256 logo.svg static/favicon.png
+
+update-mdbook-theme:
+  curl https://raw.githubusercontent.com/rust-lang/mdBook/v0.4.35/src/theme/index.hbs > docs/theme/index.hbs
+
+audit-cache:
+  cargo run --package audit-cache
+
+coverage:
+  cargo llvm-cov

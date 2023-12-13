@@ -50,11 +50,19 @@ pub trait Api {
     avoid_reuse: Option<bool>,
   ) -> Result<LoadWalletResult, jsonrpc_core::Error>;
 
+  #[rpc(name = "fundrawtransaction")]
+  fn fund_raw_transaction(
+    &self,
+    tx: String,
+    options: Option<FundRawTransactionOptions>,
+    is_witness: Option<bool>,
+  ) -> Result<FundRawTransactionResult, jsonrpc_core::Error>;
+
   #[rpc(name = "signrawtransactionwithwallet")]
   fn sign_raw_transaction_with_wallet(
     &self,
     tx: String,
-    utxos: Option<()>,
+    utxos: Option<Vec<SignRawTransactionInput>>,
     sighash_type: Option<()>,
   ) -> Result<Value, jsonrpc_core::Error>;
 
@@ -72,6 +80,9 @@ pub trait Api {
     replaceable: Option<bool>,
     confirmation_target: Option<u32>,
     estimate_mode: Option<EstimateMode>,
+    avoid_reuse: Option<bool>,
+    fee_rate: Option<f64>,
+    verbose: Option<bool>,
   ) -> Result<Txid, jsonrpc_core::Error>;
 
   #[rpc(name = "gettransaction")]

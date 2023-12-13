@@ -2,6 +2,7 @@ use super::*;
 
 pub(crate) struct State {
   pub(crate) blocks: BTreeMap<BlockHash, Block>,
+  pub(crate) change_addresses: Vec<Address>,
   pub(crate) descriptors: Vec<String>,
   pub(crate) fail_lock_unspent: bool,
   pub(crate) hashes: Vec<BlockHash>,
@@ -29,6 +30,7 @@ impl State {
 
     Self {
       blocks,
+      change_addresses: Vec::new(),
       descriptors: Vec::new(),
       fail_lock_unspent,
       hashes,
@@ -104,13 +106,15 @@ impl State {
       }
 
       for (vout, txout) in tx.output.iter().enumerate() {
-        self.utxos.insert(
-          OutPoint {
-            txid: tx.txid(),
-            vout: vout.try_into().unwrap(),
-          },
-          Amount::from_sat(txout.value),
-        );
+        if !txout.script_pubkey.is_op_return() {
+          self.utxos.insert(
+            OutPoint {
+              txid: tx.txid(),
+              vout: vout.try_into().unwrap(),
+            },
+            Amount::from_sat(txout.value),
+          );
+        }
       }
     }
 
@@ -131,24 +135,31 @@ impl State {
   pub(crate) fn broadcast_tx(&mut self, template: TransactionTemplate) -> Txid {
     let mut total_value = 0;
     let mut input = Vec::new();
-    for (height, tx, vout) in template.inputs.iter() {
+    for (height, tx, vout, witness) in template.inputs.iter() {
       let tx = &self.blocks.get(&self.hashes[*height]).unwrap().txdata[*tx];
       total_value += tx.output[*vout].value;
       input.push(TxIn {
         previous_output: OutPoint::new(tx.txid(), *vout as u32),
         script_sig: ScriptBuf::new(),
         sequence: Sequence::MAX,
-        witness: template.witness.clone(),
+        witness: witness.clone(),
       });
     }
 
-    let value_per_output = (total_value - template.fee) / template.outputs as u64;
-    assert_eq!(
-      value_per_output * template.outputs as u64 + template.fee,
-      total_value
-    );
+    let value_per_output = if template.outputs > 0 {
+      (total_value - template.fee) / template.outputs as u64
+    } else {
+      0
+    };
 
-    let tx = Transaction {
+    if template.outputs > 0 {
+      assert_eq!(
+        value_per_output * template.outputs as u64 + template.fee,
+        total_value
+      );
+    }
+
+    let mut tx = Transaction {
       version: 0,
       lock_time: LockTime::ZERO,
       input,
@@ -163,6 +174,17 @@ impl State {
         })
         .collect(),
     };
+
+    if let Some(script_pubkey) = template.op_return {
+      tx.output.insert(
+        template.op_return_index.unwrap_or(tx.output.len()),
+        TxOut {
+          value: 0,
+          script_pubkey,
+        },
+      );
+    }
+
     self.mempool.push(tx.clone());
 
     tx.txid()

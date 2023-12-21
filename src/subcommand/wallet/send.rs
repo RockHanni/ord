@@ -79,7 +79,7 @@ impl Send {
       Target::Postage
     };
 
-    let unsigned_transaction = TransactionBuilder::new(
+    let (unsigned_transaction, _) = TransactionBuilder::new(
       satpoint,
       inscriptions,
       unspent_outputs,

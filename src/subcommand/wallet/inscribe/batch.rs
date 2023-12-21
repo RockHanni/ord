@@ -330,7 +330,7 @@ impl Batch {
       &reveal_script,
     );
 
-    let unsigned_commit_tx = TransactionBuilder::new(
+    let (unsigned_commit_tx, _) = TransactionBuilder::new(
       satpoint,
       wallet_inscriptions,
       utxos.clone(),

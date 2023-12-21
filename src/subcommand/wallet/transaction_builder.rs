@@ -147,7 +147,7 @@ impl TransactionBuilder {
     }
   }
 
-  pub fn build_transaction(self) -> Result<Transaction> {
+  pub fn build_transaction(self) -> Result<(Transaction, Amount)> {
     // if self.change_addresses.len() < 2 {
     //   return Err(Error::DuplicateAddress(
     //     self.change_addresses.first().unwrap().clone(),
@@ -172,14 +172,14 @@ impl TransactionBuilder {
       _ => (),
     }
 
-    self
-      .select_outgoing()?
-      .align_outgoing()
-      .pad_alignment_output()?
-      .add_value()?
-      .strip_value()
-      .deduct_fee()
-      .build()
+    Ok(self
+        .select_outgoing()?
+        .align_outgoing()
+        .pad_alignment_output()?
+        .add_value()?
+        .strip_value()
+        .deduct_fee()
+        .build()?)
   }
 
   fn select_outgoing(mut self) -> Result<Self> {
@@ -457,7 +457,7 @@ impl TransactionBuilder {
     self.fee_rate.fee(self.estimate_vbytes())
   }
 
-  fn build(self) -> Result<Transaction> {
+  fn build(self) -> Result<(Transaction, Amount)> {
     let recipient = self.recipient.script_pubkey();
     let transaction = Transaction {
       version: 1,
@@ -629,7 +629,7 @@ impl TransactionBuilder {
       );
     }
 
-    Ok(transaction)
+    Ok((transaction, actual_fee))
   }
 
   fn calculate_sat_offset(&self) -> u64 {
@@ -789,8 +789,8 @@ mod tests {
     };
 
     pretty_assert_eq!(
-      tx_builder.build(),
-      Ok(Transaction {
+      tx_builder.build().unwrap().0,
+      Transaction {
         version: 1,
         lock_time: LockTime::ZERO,
         input: vec![tx_in(outpoint(1)), tx_in(outpoint(2)), tx_in(outpoint(3))],
@@ -799,7 +799,7 @@ mod tests {
           tx_out(5_000, change(0)),
           tx_out(1_724, change(1))
         ],
-      })
+      }
     )
   }
 
@@ -819,7 +819,7 @@ mod tests {
       Target::Postage,
     )
     .build_transaction()
-    .unwrap()
+    .unwrap().0
     .is_explicitly_rbf())
   }
 
@@ -839,13 +839,13 @@ mod tests {
         FeeRate::try_from(1.0).unwrap(),
         Target::Postage,
       )
-      .build_transaction(),
-      Ok(Transaction {
+      .build_transaction().unwrap().0,
+      Transaction {
         version: 1,
         lock_time: LockTime::ZERO,
         input: vec![tx_in(outpoint(1))],
         output: vec![tx_out(4901, recipient())],
-      })
+      }
     )
   }
 
@@ -891,13 +891,13 @@ mod tests {
         FeeRate::try_from(1.0).unwrap(),
         Target::Postage,
       )
-      .build_transaction(),
-      Ok(Transaction {
+      .build_transaction().unwrap().0,
+      Transaction {
         version: 1,
         lock_time: LockTime::ZERO,
         input: vec![tx_in(outpoint(1)), tx_in(outpoint(2))],
         output: vec![tx_out(4_950, change(1)), tx_out(4_862, recipient())],
-      })
+      }
     )
   }
 
@@ -965,8 +965,8 @@ mod tests {
         FeeRate::try_from(1.0).unwrap(),
         Target::Postage,
       )
-      .build_transaction(),
-      Ok(Transaction {
+      .build_transaction().unwrap().0,
+      Transaction {
         version: 1,
         lock_time: LockTime::ZERO,
         input: vec![tx_in(outpoint(1)), tx_in(outpoint(2))],
@@ -975,7 +975,7 @@ mod tests {
           tx_out(TARGET_POSTAGE.to_sat(), recipient()),
           tx_out(14_831, change(0)),
         ],
-      })
+      }
     )
   }
 
@@ -1106,8 +1106,8 @@ mod tests {
         FeeRate::try_from(1.0).unwrap(),
         Target::Postage,
       )
-      .build_transaction(),
-      Ok(Transaction {
+      .build_transaction().unwrap().0,
+      Transaction {
         version: 1,
         lock_time: LockTime::ZERO,
         input: vec![tx_in(outpoint(1))],
@@ -1115,7 +1115,7 @@ mod tests {
           tx_out(TARGET_POSTAGE.to_sat(), recipient()),
           tx_out(989_870, change(1))
         ],
-      })
+      }
     )
   }
 
@@ -1157,13 +1157,13 @@ mod tests {
         FeeRate::try_from(1.0).unwrap(),
         Target::Postage,
       )
-      .build_transaction(),
-      Ok(Transaction {
+      .build_transaction().unwrap().0,
+      Transaction {
         version: 1,
         lock_time: LockTime::ZERO,
         input: vec![tx_in(outpoint(1))],
         output: vec![tx_out(3_333, change(1)), tx_out(6_537, recipient())],
-      })
+      }
     )
   }
 
@@ -1186,13 +1186,13 @@ mod tests {
         FeeRate::try_from(1.0).unwrap(),
         Target::Postage,
       )
-      .build_transaction(),
-      Ok(Transaction {
+      .build_transaction().unwrap().0,
+      Transaction {
         version: 1,
         lock_time: LockTime::ZERO,
         input: vec![tx_in(outpoint(2)), tx_in(outpoint(1))],
         output: vec![tx_out(10_001, change(1)), tx_out(9_811, recipient())],
-      })
+      }
     )
   }
 
@@ -1484,13 +1484,13 @@ mod tests {
         FeeRate::try_from(1.0).unwrap(),
         Target::Value(Amount::from_sat(1000))
       )
-      .build_transaction(),
-      Ok(Transaction {
+      .build_transaction().unwrap().0,
+      Transaction {
         version: 1,
         lock_time: LockTime::ZERO,
         input: vec![tx_in(outpoint(1))],
         output: vec![tx_out(1000, recipient()), tx_out(3870, change(1))],
-      })
+      }
     )
   }
 
@@ -1513,13 +1513,13 @@ mod tests {
         FeeRate::try_from(1.0).unwrap(),
         Target::Value(Amount::from_sat(1500))
       )
-      .build_transaction(),
-      Ok(Transaction {
+      .build_transaction().unwrap().0,
+      Transaction {
         version: 1,
         lock_time: LockTime::ZERO,
         input: vec![tx_in(outpoint(1)), tx_in(outpoint(2))],
         output: vec![tx_out(1500, recipient()), tx_out(312, change(1))],
-      })
+      }
     )
   }
 
@@ -1633,13 +1633,13 @@ mod tests {
         FeeRate::try_from(1.0).unwrap(),
         Target::Value(Amount::from_sat(707))
       )
-      .build_transaction(),
-      Ok(Transaction {
+      .build_transaction().unwrap().0,
+      Transaction {
         version: 1,
         lock_time: LockTime::ZERO,
         input: vec![tx_in(outpoint(1))],
         output: vec![tx_out(901, recipient())],
-      }),
+      },
     );
   }
 
@@ -1659,13 +1659,13 @@ mod tests {
         FeeRate::try_from(1.0).unwrap(),
         Target::Postage,
       )
-      .build_transaction(),
-      Ok(Transaction {
+      .build_transaction().unwrap().0,
+      Transaction {
         version: 1,
         lock_time: LockTime::ZERO,
         input: vec![tx_in(outpoint(1))],
         output: vec![tx_out(20_000, recipient())],
-      }),
+      },
     );
   }
 
@@ -1685,13 +1685,13 @@ mod tests {
         FeeRate::try_from(5.0).unwrap(),
         Target::Value(Amount::from_sat(1000))
       )
-      .build_transaction(),
-      Ok(Transaction {
+      .build_transaction().unwrap().0,
+      Transaction {
         version: 1,
         lock_time: LockTime::ZERO,
         input: vec![tx_in(outpoint(1))],
         output: vec![tx_out(1005, recipient())],
-      }),
+      },
     );
   }
 
@@ -1774,13 +1774,13 @@ mod tests {
         FeeRate::try_from(2.0).unwrap(),
         Target::Value(Amount::from_sat(1500))
       )
-      .build_transaction(),
-      Ok(Transaction {
+      .build_transaction().unwrap().0,
+      Transaction {
         version: 1,
         lock_time: LockTime::ZERO,
         input: vec![tx_in(outpoint(1))],
         output: vec![tx_out(1802, recipient())],
-      }),
+      },
     );
   }
 
@@ -1800,13 +1800,13 @@ mod tests {
         FeeRate::try_from(250.0).unwrap(),
         Target::Postage,
       )
-      .build_transaction(),
-      Ok(Transaction {
+      .build_transaction().unwrap().0,
+      Transaction {
         version: 1,
         lock_time: LockTime::ZERO,
         input: vec![tx_in(outpoint(1))],
         output: vec![tx_out(20250, recipient())],
-      }),
+      },
     );
   }
 
@@ -1976,7 +1976,7 @@ mod tests {
 
     let fee_rate = FeeRate::try_from(17.3).unwrap();
 
-    let transaction = TransactionBuilder::new(
+    let (transaction, _) = TransactionBuilder::new(
       satpoint(1, 0),
       BTreeMap::from([(satpoint(1, 0), inscription_id(1))]),
       utxos.into_iter().collect(),
